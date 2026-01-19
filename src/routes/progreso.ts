@@ -9,6 +9,7 @@ import {
   eliminarProgreso
 } from '../controllers/progresoController';
 import { authenticateToken } from '../middleware/auth';
+import { canDeleteProgreso } from '../middleware/authorization';
 
 const router: Router = express.Router();
 
@@ -32,10 +33,10 @@ router.get('/ultimo/:hoja_ruta_id', obtenerUltimoProgreso);
 // GET - Obtener todo el progreso (dashboard)
 router.get('/', obtenerTodoProgreso);
 
-// PUT - Actualizar un progreso
-router.put('/:progreso_id', actualizarProgreso);
+// PUT - Actualizar un progreso - SOLO admin/desarrollador
+router.put('/:progreso_id', canDeleteProgreso, actualizarProgreso);
 
-// DELETE - Eliminar un progreso
-router.delete('/:progreso_id', eliminarProgreso);
+// DELETE - Eliminar un progreso - SOLO admin/desarrollador
+router.delete('/:progreso_id', canDeleteProgreso, eliminarProgreso);
 
 export default router;

@@ -12,10 +12,11 @@ import {
   cambiarEstadoCompleto,
   obtenerDashboardTiempoReal,
   actualizarEstadoHojaRuta,
-  obtenerDestinos
+  obtenerDestinos,
+  eliminarHojaRuta
 } from '../controllers/hojasRutaController';
 import { authenticateToken } from '../middleware/auth';
-import { requireWriteAccess, requireReadAccess, requireAdminAccess } from '../middleware/authorization';
+import { requireWriteAccess, requireReadAccess, requireAdminAccess, canEditHR, canDeleteHR, canUnfinalizeHR } from '../middleware/authorization';
 import {
   validateCreateHojaRuta,
   validateUpdateHojaRuta,
@@ -89,34 +90,33 @@ router.post(
   crearHojaRuta
 );
 
-// Actualizar hoja de ruta completa - SOLO desarrollador/admin
+// Actualizar hoja de ruta completa - SOLO admin/desarrollador
 router.put(
   '/:id',
   authenticateToken,
-  requireWriteAccess,
+  canEditHR,
   validateUpdateHojaRuta,
   actualizarHojaRuta
 );
 
-// Marcar hoja como completada - SOLO desarrollador/admin
+// Marcar hoja como completada - Cualquier usuario autenticado
 router.patch(
   '/:id/completar',
   authenticateToken,
-  requireWriteAccess,
   validateGetHojaRuta,
   marcarCompletada
 );
 
-// Cambiar estado de cumplimiento - SOLO desarrollador/admin
+// Cambiar estado de cumplimiento - Verificar si puede desmarcar finalizado
 router.patch(
   '/:id/estado',
   authenticateToken,
-  requireWriteAccess,
+  canUnfinalizeHR,
   validateChangeEstado,
   cambiarEstadoCumplimiento
 );
 
-// Cambiar estado completo - SOLO desarrollador/admin
+// Cambiar estado completo - SOLO admin/desarrollador
 router.patch(
   '/:id/estado-completo',
   authenticateToken,
@@ -125,13 +125,20 @@ router.patch(
   cambiarEstadoCompleto
 );
 
-// Cambiar ubicación de hoja de ruta - SOLO desarrollador/admin
+// Cambiar ubicación de hoja de ruta - Cualquier usuario autenticado
 router.patch(
   '/:id/ubicacion',
   authenticateToken,
-  requireWriteAccess,
   validateChangeUbicacion,
   cambiarUbicacion
+);
+
+// Eliminar hoja de ruta - SOLO admin/desarrollador
+router.delete(
+  '/:id',
+  authenticateToken,
+  canDeleteHR,
+  eliminarHojaRuta
 );
 
 export default router;

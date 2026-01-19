@@ -649,3 +649,50 @@ export const obtenerDestinos = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Eliminar hoja de ruta - SOLO admin/desarrollador
+export const eliminarHojaRuta = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('🗑️ === ELIMINANDO HOJA DE RUTA ===');
+    console.log('📝 ID:', id);
+    
+    // Primero eliminar progreso relacionado
+    await pool.query('DELETE FROM progreso_hojas_ruta WHERE hoja_ruta_id = $1', [id]);
+    
+    // Eliminar notificaciones relacionadas
+    await pool.query('DELETE FROM notificaciones WHERE hoja_ruta_id = $1', [id]);
+    
+    // Eliminar envíos relacionados
+    await pool.query('DELETE FROM envios WHERE hoja_id = $1', [id]);
+    
+    // Finalmente eliminar la hoja de ruta
+    const result = await pool.query(
+      'DELETE FROM hojas_ruta WHERE id = $1 RETURNING id, numero_hr',
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Hoja de ruta no encontrada' 
+      });
+    }
+    
+    console.log('✅ Hoja de ruta eliminada:', result.rows[0]);
+    
+    res.json({
+      success: true,
+      message: `Hoja de ruta ${result.rows[0].numero_hr} eliminada correctamente`,
+      hojaEliminada: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al eliminar hoja de ruta:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al eliminar hoja de ruta'
+    });
+  }
+};
