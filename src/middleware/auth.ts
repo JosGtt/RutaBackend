@@ -88,10 +88,10 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
       }
 
       // Validar estructura del token
-      if (!decoded || !decoded.userId || !decoded.rol) {
+      if (!decoded || !decoded.userId) {
         console.log('❌ Token inválido:', {
           decoded,
-          hasuseId: decoded?.userId,
+          hasUserId: decoded?.userId,
           hasRol: decoded?.rol
         });
         logger.warn({
@@ -107,7 +107,8 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 
       // Asignar datos del token al request
       req.userId = decoded.userId;
-      req.userRole = decoded.rol;
+      // Si el token antiguo no tiene rol, usar 'usuario' por defecto
+      req.userRole = decoded.rol || 'usuario';
       req.tokenExp = decoded.exp;
 
       logger.debug({
