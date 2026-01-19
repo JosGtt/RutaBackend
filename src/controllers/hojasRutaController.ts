@@ -184,7 +184,7 @@ export const actualizarHojaRuta = async (req: Request, res: Response) => {
     // Separar campos principales de los detalles
     const {
       // Campos principales
-      numero_hr, referencia, procedencia, fecha_limite, cite, numero_fojas, 
+      numero_hr, referencia, procedencia, fecha_limite, fecha_ingreso, cite, numero_fojas, 
       prioridad, estado, observaciones, nombre_solicitante, telefono_celular,
       // Todo lo demás va a detalles
       ...detalles
@@ -210,7 +210,11 @@ export const actualizarHojaRuta = async (req: Request, res: Response) => {
     }
     if (fecha_limite !== undefined) {
       fieldsToUpdate.push(`fecha_limite = $${paramCount++}`);
-      values.push(fecha_limite);
+      values.push(fecha_limite || null);
+    }
+    if (fecha_ingreso !== undefined) {
+      fieldsToUpdate.push(`fecha_ingreso = $${paramCount++}`);
+      values.push(fecha_ingreso || null);
     }
     if (cite !== undefined) {
       fieldsToUpdate.push(`cite = $${paramCount++}`);
@@ -248,9 +252,9 @@ export const actualizarHojaRuta = async (req: Request, res: Response) => {
     }
     
     // Siempre actualizar timestamp
-    fieldsToUpdate.push(`updated_at = CURRENT_TIMESTAMP`);
+    fieldsToUpdate.push(`actualizado_en = CURRENT_TIMESTAMP`);
     
-    if (fieldsToUpdate.length === 1) { // Solo updated_at
+    if (fieldsToUpdate.length === 1) { // Solo actualizado_en
       return res.status(400).json({ 
         success: false, 
         message: 'No hay datos para actualizar' 
@@ -304,7 +308,7 @@ export const marcarCompletada = async (req: Request, res: Response) => {
       `UPDATE hojas_ruta 
        SET estado_cumplimiento = 'completado', 
            fecha_completado = CURRENT_TIMESTAMP,
-           updated_at = CURRENT_TIMESTAMP
+           actualizado_en = CURRENT_TIMESTAMP
        WHERE id = $1 RETURNING *`,
       [id]
     );
@@ -315,11 +319,15 @@ export const marcarCompletada = async (req: Request, res: Response) => {
 
     // Crear notificación de completado
     const hoja = result.rows[0];
-    await pool.query(
-      `INSERT INTO notificaciones (hoja_ruta_id, usuario_id, tipo, mensaje)
-       VALUES ($1, $2, 'completado', $3)`,
-      [id, hoja.usuario_creador_id, `✅ Hoja de Ruta #${hoja.numero_hr} marcada como COMPLETADA`]
-    );
+    try {
+      await pool.query(
+        `INSERT INTO notificaciones (hoja_id, usuario_id, tipo, mensaje)
+         VALUES ($1, $2, 'completado', $3)`,
+        [id, hoja.usuario_creador_id, `✅ Hoja de Ruta #${hoja.numero_hr} marcada como COMPLETADA`]
+      );
+    } catch (e) {
+      console.log('⚠️ No se pudo crear notificación');
+    }
 
     res.json({ message: 'Hoja de ruta marcada como completada', hoja: result.rows[0] });
   } catch (error) {
@@ -363,7 +371,7 @@ export const cambiarEstadoCumplimiento = async (req: Request, res: Response) => 
     // Actualizar tanto estado_cumplimiento como estado si se proporciona
     let updateQuery = `UPDATE hojas_ruta 
                        SET estado_cumplimiento = $1,
-                           updated_at = CURRENT_TIMESTAMP`;
+                           actualizado_en = CURRENT_TIMESTAMP`;
     let queryParams = [estado_cumplimiento];
     
     if (estado) {
@@ -402,7 +410,7 @@ export const cambiarEstadoCumplimiento = async (req: Request, res: Response) => 
     console.log('✅ Estado actualizado exitosamente:', {
       id: result.rows[0].id,
       nuevo_estado: result.rows[0].estado_cumplimiento,
-      fecha_updated: result.rows[0].updated_at
+      fecha_updated: result.rows[0].actualizado_en
     });
     console.log('🎯 === FIN CAMBIAR ESTADO ===');
     
@@ -461,7 +469,7 @@ export const cambiarUbicacion = async (req: Request, res: Response) => {
 
     const result = await pool.query(
       `UPDATE hojas_ruta 
-       SET ubicacion_actual = $1, responsable_actual = $2, updated_at = CURRENT_TIMESTAMP
+       SET ubicacion_actual = $1, responsable_actual = $2, actualizado_en = CURRENT_TIMESTAMP
        WHERE id = $3 RETURNING *`,
       [ubicacion_actual, responsable_actual, id]
     );
@@ -599,7 +607,7 @@ export const actualizarEstadoHojaRuta = async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      'UPDATE hojas_ruta SET estado = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      'UPDATE hojas_ruta SET estado = $1, actualizado_en = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
       [estado, id]
     );
 
@@ -659,13 +667,25 @@ export const eliminarHojaRuta = async (req: Request, res: Response) => {
     console.log('📝 ID:', id);
     
     // Primero eliminar progreso relacionado
-    await pool.query('DELETE FROM progreso_hojas_ruta WHERE hoja_ruta_id = $1', [id]);
+    try {
+      await pool.query('DELETE FROM progreso_hojas_ruta WHERE hoja_ruta_id = $1', [id]);
+    } catch (e) {
+      console.log('⚠️ No se pudo eliminar progreso (tabla no existe o vacía)');
+    }
     
-    // Eliminar notificaciones relacionadas
-    await pool.query('DELETE FROM notificaciones WHERE hoja_ruta_id = $1', [id]);
+    // Eliminar notificaciones relacionadas (usa hoja_id, no hoja_ruta_id)
+    try {
+      await pool.query('DELETE FROM notificaciones WHERE hoja_id = $1', [id]);
+    } catch (e) {
+      console.log('⚠️ No se pudo eliminar notificaciones');
+    }
     
     // Eliminar envíos relacionados
-    await pool.query('DELETE FROM envios WHERE hoja_id = $1', [id]);
+    try {
+      await pool.query('DELETE FROM envios WHERE hoja_id = $1', [id]);
+    } catch (e) {
+      console.log('⚠️ No se pudo eliminar envíos');
+    }
     
     // Finalmente eliminar la hoja de ruta
     const result = await pool.query(
