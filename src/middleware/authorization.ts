@@ -157,7 +157,6 @@ export const canUnfinalizeHR = (req: AuthRequest, res: Response, next: NextFunct
 };
 
 export { hasMinimumRole };
-};
 
 // Función auxiliar para verificar si puede editar
 export const canEdit = (userRole: string): boolean => {
