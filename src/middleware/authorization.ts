@@ -8,9 +8,14 @@ interface AuthRequest extends Request {
 }
 
 // Roles jerárquicos (mayor número = más permisos)
+// Incluye variantes para compatibilidad con BD
 const ROLE_HIERARCHY: { [key: string]: number } = {
   'usuario': 1,
+  'visualizador': 1,
+  'auditor': 1,
+  'gerente': 2,
   'admin': 2,
+  'administrador': 2,
   'desarrollador': 3
 };
 

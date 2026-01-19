@@ -79,7 +79,8 @@ export const login = async (req: Request, res: Response) => {
         [user.rol_id]
       );
       if (roleResult.rows.length > 0) {
-        rolName = roleResult.rows[0].nombre;
+        // Normalizar a minúsculas para comparaciones consistentes
+        rolName = roleResult.rows[0].nombre.toLowerCase();
       }
     }
 

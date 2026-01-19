@@ -181,7 +181,7 @@ export const validateChangeEstado = [
   body('estado')
     .trim()
     .notEmpty().withMessage('Estado requerido')
-    .isIn(['pendiente', 'en_proceso', 'completado', 'vencido']).withMessage('Estado inválido'),
+    .isIn(['pendiente', 'en_proceso', 'completado', 'vencido', 'finalizada']).withMessage('Estado inválido'),
   
   handleValidationErrors
 ];
